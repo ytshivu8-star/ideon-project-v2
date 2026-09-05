@@ -9,14 +9,19 @@ export async function generateProjects(dna: StudentDna): Promise<ProjectConcept[
   if (!res.ok) {
     let errorMessage = "Failed to generate projects";
     try {
+      if (res.status === 404) {
+         errorMessage = "API route not found (404). Vercel serverless function may be missing.";
+      }
       const errorData = await res.json();
       if (errorData.message) {
-         errorMessage = `Generation failed: ${errorData.message}`;
-         if (errorData.stage) {
-            errorMessage = `Generation failed at ${errorData.stage} stage: ${errorData.message}`;
+         errorMessage = `${errorData.stage ? `[${errorData.stage.toUpperCase()}] ` : ''}${errorData.message}`;
+         if (errorData.details) {
+            errorMessage += ` | ${errorData.details}`;
          }
       }
-    } catch(e) {}
+    } catch(e) {
+      if (res.status !== 404) errorMessage += ` (${res.status} ${res.statusText})`;
+    }
     throw new Error(errorMessage);
   }
   return res.json();
@@ -28,7 +33,16 @@ export async function evolveProject(project: ProjectConcept): Promise<EvolvedPro
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project }),
   });
-  if (!res.ok) throw new Error("Failed to evolve project");
+  if (!res.ok) {
+    let errorMessage = "API request failed";
+    try {
+      const errorData = await res.json();
+      if (errorData.message) errorMessage = errorData.message;
+    } catch(e) {
+      errorMessage += ` (${res.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   return res.json();
 }
 
@@ -38,7 +52,16 @@ export async function generateBlueprint(project: ProjectConcept): Promise<any> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project }),
   });
-  if (!res.ok) throw new Error("Failed to generate blueprint");
+  if (!res.ok) {
+    let errorMessage = "API request failed";
+    try {
+      const errorData = await res.json();
+      if (errorData.message) errorMessage = errorData.message;
+    } catch(e) {
+      errorMessage += ` (${res.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   return res.json();
 }
 
@@ -48,7 +71,16 @@ export async function adaptProject(project: ProjectConcept, constraint: string):
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project, constraint }),
   });
-  if (!res.ok) throw new Error("Failed to adapt project");
+  if (!res.ok) {
+    let errorMessage = "API request failed";
+    try {
+      const errorData = await res.json();
+      if (errorData.message) errorMessage = errorData.message;
+    } catch(e) {
+      errorMessage += ` (${res.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   return res.json();
 }
 
@@ -58,7 +90,16 @@ export async function askMentor(project: ProjectConcept, messages: any[]): Promi
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project, messages }),
   });
-  if (!res.ok) throw new Error("Failed to get mentor response");
+  if (!res.ok) {
+    let errorMessage = "API request failed";
+    try {
+      const errorData = await res.json();
+      if (errorData.message) errorMessage = errorData.message;
+    } catch(e) {
+      errorMessage += ` (${res.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   return res.json();
 }
 
@@ -68,7 +109,16 @@ export async function getVivaQuestion(project: ProjectConcept, history: any[]): 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project, history }),
   });
-  if (!res.ok) throw new Error("Failed to get viva question");
+  if (!res.ok) {
+    let errorMessage = "API request failed";
+    try {
+      const errorData = await res.json();
+      if (errorData.message) errorMessage = errorData.message;
+    } catch(e) {
+      errorMessage += ` (${res.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   return res.json();
 }
 
@@ -78,6 +128,15 @@ export async function evaluateVivaAnswer(project: ProjectConcept, question: stri
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project, question, answer }),
   });
-  if (!res.ok) throw new Error("Failed to evaluate viva answer");
+  if (!res.ok) {
+    let errorMessage = "API request failed";
+    try {
+      const errorData = await res.json();
+      if (errorData.message) errorMessage = errorData.message;
+    } catch(e) {
+      errorMessage += ` (${res.status})`;
+    }
+    throw new Error(errorMessage);
+  }
   return res.json();
 }
