@@ -1,4 +1,4 @@
-import { getAi, generateContentWithRetry, Type } from './utils';
+import { getAi, generateContentWithRetry, Type } from './utils.js';
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
