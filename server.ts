@@ -21,17 +21,40 @@ const getAi = () => {
     });
   };
 
-  const generateContentWithRetry = async (ai: GoogleGenAI, options: any, maxRetries = 2) => {
+  const generateContentWithRetry = async (ai: GoogleGenAI, options: any, maxRetries = 3) => {
     let retries = maxRetries;
     while (retries > 0) {
       try {
-        return await ai.models.generateContent(options);
+        const interaction = await ai.interactions.create(options);
+        
+        let fullOutput = "";
+        for (const step of interaction.steps || []) {
+          if (step.type === 'model_output') {
+            const textContent = step.content?.find(c => c.type === 'text');
+            if (textContent && textContent.text) {
+              fullOutput += textContent.text;
+            }
+          }
+        }
+        
+        return { text: fullOutput };
       } catch (error: any) {
         console.error("[GEMINI ERROR]:", error.message || error);
-        if (error.status === 'UNAVAILABLE' || error.message?.includes('503') || error.message?.includes('429')) {
+        
+        // Don't retry if quota exceeded
+        if (error.message && error.message.toLowerCase().includes('quota')) {
+          throw new Error("API Quota Exceeded: " + error.message);
+        }
+
+        const isUnavailable = error.status === 'UNAVAILABLE' || 
+                              (error.message && (error.message.includes('503') || error.message.includes('429')));
+        
+        if (isUnavailable) {
           retries--;
           if (retries === 0) throw error;
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          const delay = (maxRetries - retries) * 1500;
+          console.log(`[GEMINI RETRY] Retrying in ${delay}ms... (${retries} retries left)`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         } else {
           throw error;
         }
@@ -70,11 +93,9 @@ Avoid generic projects whenever possible. If a concept is common, transform it i
 
       console.log("[GENERATE] Calling Gemini");
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.7-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
+        model: "gemini-3.1-flash-lite",
+        input: prompt,
+        response_format: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
@@ -107,7 +128,6 @@ properties: {
               ]
             }
           }
-        }
       });
       
       console.log("[GENERATE] Parsing response");
@@ -141,11 +161,9 @@ Identify its weaknesses (e.g. too common, limited technical depth, low research 
 Then, evolve it into a significantly improved, highly differentiated project. Explain what changed (problem scope, technical approach, AI/ML component, architecture, research contribution, target users, evaluation methodology).`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.7-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
+        model: "gemini-3.1-flash-lite",
+        input: prompt,
+        response_format: {
             type: Type.OBJECT,
             properties: {
               weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -192,7 +210,6 @@ Then, evolve it into a significantly improved, highly differentiated project. Ex
             },
             required: ["weaknesses", "originalityBefore", "originalityAfter", "changes", "evolvedProject"]
           }
-        }
       });
       res.json(JSON.parse(response.text));
     } catch (error: any) {
@@ -211,11 +228,9 @@ ${JSON.stringify(project, null, 2)}
 Provide sections for Project Overview, Features (core, advanced, future), Technology Stack, Database Design (entities/tables), Development Roadmap (break down into weeks/phases), Team Distribution (assuming team size constraints if any, or general), Risks & Mitigation, and Future Improvements.`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.7-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
+        model: "gemini-3.1-flash-lite",
+        input: prompt,
+        response_format: {
             type: Type.OBJECT,
             properties: {
               overview: {
@@ -284,7 +299,6 @@ Provide sections for Project Overview, Features (core, advanced, future), Techno
             },
             required: ["overview", "features", "techStack", "databaseDesign", "roadmap", "teamDistribution", "risks", "futureImprovements"]
           }
-        }
       });
       res.json(JSON.parse(response.text));
     } catch (error: any) {
@@ -306,11 +320,9 @@ ${JSON.stringify(project, null, 2)}
 Provide the Before and After for Features, Timeline, Technology, and Complexity, and explain what was removed, added, or changed. Then provide the adapted project object.`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.7-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
+        model: "gemini-3.1-flash-lite",
+        input: prompt,
+        response_format: {
             type: Type.OBJECT,
             properties: {
               explanation: { type: Type.STRING },
@@ -348,7 +360,6 @@ Provide the Before and After for Features, Timeline, Technology, and Complexity,
               }
             }
           }
-        }
       });
       res.json(JSON.parse(response.text));
     } catch (error: any) {
@@ -357,41 +368,23 @@ Provide the Before and After for Features, Timeline, Technology, and Complexity,
     }
   });
 
-  app.post("/api/mentor", async (req, res) => {
+    app.post("/api/mentor", async (req, res) => {
     try {
       const ai = getAi();
       const { project, messages } = req.body;
       
-      const chat = ai.chats.create({
-        model: "gemini-3.7-flash",
-        config: {
-          systemInstruction: `You are an AI technical mentor for a final-year student project.
-You must answer specifically for the current project instead of giving generic answers.
-Project Details:
-${JSON.stringify(project, null, 2)}`,
-        },
-      });
-
-      // Pass previous context except the last message, this is a bit tricky with chats API if we have history.
-      // Easiest is just to generate a one-off with history embedded in prompt if we don't have chat history objects properly formatted.
-      // But let's format history for the model.
-      
-      let contents = [];
+      let inputString = "Chat History:\n";
       for (const msg of messages) {
-         contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] });
+         inputString += `${msg.role}: ${msg.text}\n`;
       }
-
+      inputString += "\nBased on the above history, please respond to the last user message as the AI mentor.";
+      
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.7-flash",
-        contents: contents,
-        config: {
-            systemInstruction: `You are an AI technical mentor for a final-year student project.
-You must answer specifically for the current project instead of giving generic answers.
-Project Details:
-${JSON.stringify(project, null, 2)}`,
-        }
+        model: "gemini-3.1-flash-lite",
+        input: inputString,
+        system_instruction: `You are an AI technical mentor for a final-year student project.You must answer specifically for the current project instead of giving generic answers.Project Details:${JSON.stringify(project, null, 2)}`
       });
-
+      
       res.json({ text: response.text });
     } catch (error: any) {
       console.error(error);
@@ -399,7 +392,7 @@ ${JSON.stringify(project, null, 2)}`,
     }
   });
 
-  app.post("/api/viva/question", async (req, res) => {
+app.post("/api/viva/question", async (req, res) => {
     try {
       const ai = getAi();
       const { project, history } = req.body;
@@ -414,8 +407,8 @@ History:
 ${JSON.stringify(history, null, 2)}
 `;
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.7-flash",
-        contents: prompt
+        model: "gemini-3.1-flash-lite",
+        input: prompt
       });
       res.json({ question: response.text });
     } catch (error: any) {
@@ -446,11 +439,9 @@ Evaluate the answer and provide:
 
 Format as JSON.`;
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.7-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
+        model: "gemini-3.1-flash-lite",
+        input: prompt,
+        response_format: {
             type: Type.OBJECT,
             properties: {
               technicalAccuracy: { type: Type.INTEGER },
@@ -462,7 +453,6 @@ Format as JSON.`;
               followUpQuestion: { type: Type.STRING }
             }
           }
-        }
       });
       res.json(JSON.parse(response.text));
     } catch (error: any) {
