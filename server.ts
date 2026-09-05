@@ -2,8 +2,6 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
 
-import generateHandler from "./api/generate.js";
-import healthHandler from "./api/health.js";
 const app = express();
 app.use(express.json());
 
@@ -23,16 +21,17 @@ const getAi = () => {
     });
   };
 
-  const generateContentWithRetry = async (ai: GoogleGenAI, options: any, maxRetries = 5) => {
+  const generateContentWithRetry = async (ai: GoogleGenAI, options: any, maxRetries = 2) => {
     let retries = maxRetries;
     while (retries > 0) {
       try {
         return await ai.models.generateContent(options);
       } catch (error: any) {
+        console.error("[GEMINI ERROR]:", error.message || error);
         if (error.status === 'UNAVAILABLE' || error.message?.includes('503') || error.message?.includes('429')) {
           retries--;
           if (retries === 0) throw error;
-          await new Promise(resolve => setTimeout(resolve, 4000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         } else {
           throw error;
         }
@@ -41,8 +40,95 @@ const getAi = () => {
   };
 
   
-  app.get("/api/health", (req, res) => healthHandler(req, res));
-  app.post("/api/generate", (req, res) => generateHandler(req, res));
+
+  app.get("/api/health", (req, res) => {
+    res.json({
+      ok: true,
+      geminiConfigured: !!process.env.GEMINI_API_KEY
+    });
+  });
+
+  app.post("/api/generate", async (req, res) => {
+    try {
+      console.log("[GENERATE] Checking API key");
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: true, stage: "environment", message: "GEMINI_API_KEY is missing." });
+      }
+
+      console.log("[GENERATE] Initializing Gemini");
+      const ai = getAi();
+      const studentDna = req.body;
+      
+      if (!studentDna || Object.keys(studentDna).length === 0) {
+        return res.status(400).json({ error: true, stage: "request", message: "Missing request body" });
+      }
+
+      const prompt = `You are a final-year project architect, software engineer, AI/ML expert, innovation evaluator, research mentor, and university project guide.
+Generate exactly 3 personalized final-year project concepts based on this student profile:
+${JSON.stringify(studentDna, null, 2)}
+Avoid generic projects whenever possible. If a concept is common, transform it into a more differentiated version.`;
+
+      console.log("[GENERATE] Calling Gemini");
+      const response = await generateContentWithRetry(ai, {
+        model: "gemini-3.7-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+properties: {
+                title: { type: Type.STRING },
+                pitch: { type: Type.STRING },
+                problemStatement: { type: Type.STRING },
+                proposedSolution: { type: Type.STRING },
+                targetUsers: { type: Type.STRING },
+                innovationExplanation: { type: Type.STRING },
+                originalityScore: { type: Type.INTEGER },
+                feasibilityScore: { type: Type.INTEGER },
+                technicalDepthScore: { type: Type.INTEGER },
+                academicValueScore: { type: Type.INTEGER },
+                industryRelevanceScore: { type: Type.INTEGER },
+                skillMatchScore: { type: Type.INTEGER },
+                estimatedDuration: { type: Type.STRING },
+                estimatedBudget: { type: Type.STRING },
+                technologies: { type: Type.ARRAY, items: { type: Type.STRING } },
+                coreFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
+                advancedFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
+                aiMlComponents: { type: Type.STRING },
+                whySuitable: { type: Type.STRING }
+              },
+              required: [
+                "title", "pitch", "problemStatement", "proposedSolution", "targetUsers",
+                "innovationExplanation", "originalityScore", "feasibilityScore", "technicalDepthScore",
+                "academicValueScore", "industryRelevanceScore", "skillMatchScore", "estimatedDuration",
+                "estimatedBudget", "technologies", "coreFeatures", "advancedFeatures", "aiMlComponents", "whySuitable"
+              ]
+            }
+          }
+        }
+      });
+      
+      console.log("[GENERATE] Parsing response");
+      if (!response || !response.text) {
+        return res.status(502).json({ error: true, stage: "gemini", message: "Received empty response from Gemini API" });
+      }
+
+      let parsedData;
+      try {
+        parsedData = JSON.parse(response.text);
+      } catch (parseError) {
+        return res.status(502).json({ error: true, stage: "parsing", message: "Failed to parse JSON response", details: parseError.message });
+      }
+
+      res.json(parsedData);
+    } catch (error) {
+      console.error("[GENERATE] Server Error:", error);
+      res.status(500).json({ error: true, stage: "server", message: "Internal Server Error in /api/generate", details: error.message });
+    }
+  });
+
   app.post("/api/evolve", async (req, res) => {
     try {
       const ai = getAi();
@@ -55,7 +141,7 @@ Identify its weaknesses (e.g. too common, limited technical depth, low research 
 Then, evolve it into a significantly improved, highly differentiated project. Explain what changed (problem scope, technical approach, AI/ML component, architecture, research contribution, target users, evaluation methodology).`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -125,7 +211,7 @@ ${JSON.stringify(project, null, 2)}
 Provide sections for Project Overview, Features (core, advanced, future), Technology Stack, Database Design (entities/tables), Development Roadmap (break down into weeks/phases), Team Distribution (assuming team size constraints if any, or general), Risks & Mitigation, and Future Improvements.`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -220,7 +306,7 @@ ${JSON.stringify(project, null, 2)}
 Provide the Before and After for Features, Timeline, Technology, and Complexity, and explain what was removed, added, or changed. Then provide the adapted project object.`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -277,7 +363,7 @@ Provide the Before and After for Features, Timeline, Technology, and Complexity,
       const { project, messages } = req.body;
       
       const chat = ai.chats.create({
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         config: {
           systemInstruction: `You are an AI technical mentor for a final-year student project.
 You must answer specifically for the current project instead of giving generic answers.
@@ -296,7 +382,7 @@ ${JSON.stringify(project, null, 2)}`,
       }
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: contents,
         config: {
             systemInstruction: `You are an AI technical mentor for a final-year student project.
@@ -328,7 +414,7 @@ History:
 ${JSON.stringify(history, null, 2)}
 `;
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt
       });
       res.json({ question: response.text });
@@ -360,7 +446,7 @@ Evaluate the answer and provide:
 
 Format as JSON.`;
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-3.6-flash",
+        model: "gemini-3.7-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",

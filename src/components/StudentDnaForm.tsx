@@ -77,6 +77,7 @@ export default function StudentDnaForm({
   setProjects: (projects: ProjectConcept[]) => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [formData, setFormData] = useState<StudentDna>({
     branch: "",
     skills: "",
@@ -105,6 +106,7 @@ export default function StudentDnaForm({
     e.preventDefault();
     setLoading(true);
     try {
+      setErrorMsg(null);
       setStudentDna(formData);
       const generated = await generateProjects(formData);
       setProjects(generated);
@@ -112,10 +114,7 @@ export default function StudentDnaForm({
     } catch (error) {
       console.error(error);
       const errorMessage = error instanceof Error ? error.message : "Failed to generate projects.";
-      if (window.confirm(`${errorMessage}\n\nWould you like to load default sample projects instead?`)) {
-        setProjects(fallbackProjects);
-        navigate("discovery");
-      }
+      setErrorMsg(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -137,6 +136,32 @@ export default function StudentDnaForm({
         </button>
       </div>
 
+
+        {errorMsg && (
+          <div className="p-4 mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400">
+            <p className="font-medium mb-2">Generation Failed</p>
+            <p className="text-sm mb-4">{errorMsg}</p>
+            <div className="flex gap-4">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+              >
+                Retry Generation
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setProjects(fallbackProjects);
+                  navigate("discovery");
+                }}
+                className="px-4 py-2 bg-neutral-200 dark:bg-neutral-800 text-black dark:text-white rounded-lg text-sm font-medium hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-colors"
+              >
+                Use Default Projects
+              </button>
+            </div>
+          </div>
+        )}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
