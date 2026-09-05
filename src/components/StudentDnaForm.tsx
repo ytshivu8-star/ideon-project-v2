@@ -4,6 +4,69 @@ import { generateProjects } from "../api";
 import { StudentDna, ProjectConcept } from "../types";
 import { ViewState } from "../App";
 
+const fallbackProjects: ProjectConcept[] = [
+  {
+    title: "CodeSynth: Collaborative Web IDE",
+    pitch: "A browser-based multi-user code editor that resolves concurrent editing conflicts using Abstract Syntax Tree structural merging.",
+    problemStatement: "Traditional collaborative text editors use Operational Transformation (OT) or CRDTs at the character level, which frequently leads to syntactically broken code.",
+    proposedSolution: "CodeSynth combines a React-based Monaco editor frontend with a Node.js backend executing custom Babel-based AST analysis.",
+    targetUsers: ["Remote Software Engineering Teams", "Computer Science Educators"],
+    innovationExplanation: "Instead of treating code as plain text, CodeSynth applies syntax-aware AST parsing to merge concurrent edits.",
+    originalityScore: 88,
+    feasibilityScore: 85,
+    technicalDepthScore: 90,
+    academicValueScore: 87,
+    industryRelevanceScore: 92,
+    skillMatchScore: 95,
+    estimatedDuration: "12 Weeks",
+    estimatedBudget: "$0 - $50 (Free Tier Cloud Hosting)",
+    technologies: ["React", "Node.js", "Express", "Socket.io", "Monaco Editor"],
+    coreFeatures: ["Multi-user real-time code editing", "AST-based syntax tree parsing"],
+    advancedFeatures: ["Dockerized sandbox backend execution environment"],
+    whySuitable: "It heavily utilizes React for complex UI state management and Node.js for asynchronous event handling."
+  },
+  {
+    title: "AdaptiveSense: Accessibility Proxy",
+    pitch: "A custom web proxy and dashboard system that dynamically transforms third-party web content to reduce cognitive overload.",
+    problemStatement: "Standard web pages are overcrowded with visual noise that hinder individuals with cognitive load issues.",
+    proposedSolution: "AdaptiveSense provides a Node.js reverse proxy that intercepts web traffic, strips visual clutter, re-structures DOM elements.",
+    targetUsers: ["Neurodivergent Students", "Web Accessibility Researchers"],
+    innovationExplanation: "By combining server-side DOM transformation with dynamic client-side visual adaptation.",
+    originalityScore: 91,
+    feasibilityScore: 88,
+    technicalDepthScore: 84,
+    academicValueScore: 93,
+    industryRelevanceScore: 89,
+    skillMatchScore: 92,
+    estimatedDuration: "10 Weeks",
+    estimatedBudget: "$0 - $30",
+    technologies: ["React", "Node.js", "Express", "Puppeteer"],
+    coreFeatures: ["Dynamic DOM cleaning", "React toolbar overlay"],
+    advancedFeatures: ["Automated AI-assisted text summarization"],
+    whySuitable: "Demonstrates deep knowledge of React component architectures."
+  },
+  {
+    title: "SpatialGrid: Virtual Event Engine",
+    pitch: "An interactive 2D spatial canvas that routes multi-user WebRTC audio streams based on avatar distance.",
+    problemStatement: "Conventional video conferencing tools isolate users into rigid breakout rooms.",
+    proposedSolution: "SpatialGrid uses an interactive React Canvas interface where participants move avatars around a virtual map.",
+    targetUsers: ["Virtual Conference Hosts", "Remote Workplaces"],
+    innovationExplanation: "Replaces static voice rooms with a real-time positional engine.",
+    originalityScore: 86,
+    feasibilityScore: 82,
+    technicalDepthScore: 89,
+    academicValueScore: 85,
+    industryRelevanceScore: 94,
+    skillMatchScore: 90,
+    estimatedDuration: "12 Weeks",
+    estimatedBudget: "$0 - $40",
+    technologies: ["React", "Node.js", "WebRTC", "Socket.io"],
+    coreFeatures: ["2D spatial environment rendered via HTML5 Canvas", "Proximity-based WebRTC peer connectivity"],
+    advancedFeatures: ["Spatial screen sharing zones"],
+    whySuitable: "Takes full advantage of React's state management for canvas interaction."
+  }
+];
+
 export default function StudentDnaForm({
   navigate,
   setStudentDna,
@@ -48,7 +111,11 @@ export default function StudentDnaForm({
       navigate("discovery");
     } catch (error) {
       console.error(error);
-      alert(error instanceof Error ? error.message : "Failed to generate projects. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate projects.";
+      if (window.confirm(`${errorMessage}\n\nWould you like to load default sample projects instead?`)) {
+        setProjects(fallbackProjects);
+        navigate("discovery");
+      }
     } finally {
       setLoading(false);
     }
