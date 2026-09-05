@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Landing from './components/Landing';
 import StudentDnaForm from './components/StudentDnaForm';
 import ProjectDiscovery from './components/ProjectDiscovery';
@@ -20,7 +20,7 @@ export default function App() {
   const [evolvedData, setEvolvedData] = useState<EvolvedProjectData | null>(null);
   const [blueprint, setBlueprint] = useState<any>(null);
 
-  const navigate = (v: ViewState) => setView(v);
+  const navigate = useCallback((v: ViewState) => setView(v), []);
 
   return (
     <div className="flex h-screen bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-sans">

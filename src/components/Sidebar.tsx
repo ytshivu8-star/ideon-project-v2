@@ -26,10 +26,10 @@ export default function Sidebar({
 
   return (
     <div className="w-64 bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800 flex flex-col">
-      <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer" onClick={() => navigate("landing")}>
+      <button type="button" aria-label="Go to landing page" className="w-full text-left p-6 border-b border-neutral-200 dark:border-neutral-800 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-black dark:focus:ring-white" onClick={() => navigate("landing")}>
         <div className="text-xl font-bold tracking-tight">PROJECT IDEON</div>
         <div className="text-xs text-neutral-500 mt-1 uppercase tracking-widest font-semibold">Architect</div>
-      </div>
+      </button>
       <nav className="flex-1 p-4 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;

@@ -15,12 +15,12 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-      console.log("[GENERATE] Checking API key");
+      
       if (!process.env.GEMINI_API_KEY) {
         return res.status(500).json({ error: true, stage: "environment", message: "GEMINI_API_KEY is missing." });
       }
 
-      console.log("[GENERATE] Initializing Gemini");
+      
       const ai = getAi();
       const studentDna = req.body;
       
@@ -33,7 +33,7 @@ Generate exactly 3 personalized final-year project concepts based on this studen
 ${JSON.stringify(studentDna, null, 2)}
 Avoid generic projects whenever possible. If a concept is common, transform it into a more differentiated version.`;
 
-      console.log("[GENERATE] Calling Gemini");
+      
       const response = await generateContentWithRetry(ai, {
         model: "gemini-3.1-flash-lite",
         input: prompt,
@@ -72,7 +72,7 @@ properties: {
           }
       });
       
-      console.log("[GENERATE] Parsing response");
+      
       if (!response || !response.text) {
         return res.status(502).json({ error: true, stage: "gemini", message: "Received empty response from Gemini API" });
       }
