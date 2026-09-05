@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 
 const app = express();
@@ -39,22 +38,46 @@ const getAi = () => {
     }
   };
 
+    app.get("/api/health", (req, res) => {
+    res.json({
+      ok: true,
+      geminiConfigured: !!process.env.GEMINI_API_KEY
+    });
+  });
+
   app.post("/api/generate", async (req, res) => {
     try {
-      const ai = getAi();
-      const studentDna = req.body;
-      
-      if (!studentDna || Object.keys(studentDna).length === 0) {
-        return res.status(400).json({ error: "Missing or empty request body (studentDna is required)" });
+      console.error("[GENERATE] stage=environment - checking API key");
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({
+          error: true,
+          message: "GEMINI_API_KEY is not configured on the server",
+          stage: "environment"
+        });
       }
 
+      console.error("[GENERATE] stage=environment - initializing Gemini SDK");
+      const ai = getAi();
+      
+      console.error("[GENERATE] stage=request - parsing body");
+      const studentDna = req.body;
+      if (!studentDna || Object.keys(studentDna).length === 0) {
+        return res.status(400).json({
+          error: true,
+          message: "Missing or empty request body (studentDna is required)",
+          stage: "request"
+        });
+      }
+
+      console.error("[GENERATE] stage=gemini - preparing prompt");
       const prompt = `You are a final-year project architect, software engineer, AI/ML expert, innovation evaluator, research mentor, and university project guide.
 Generate exactly 3 personalized final-year project concepts based on this student profile:
 ${JSON.stringify(studentDna, null, 2)}
 Avoid generic projects whenever possible (e.g., basic attendance systems, library management, weather apps, basic chat apps, e-commerce, face recognition attendance, hospital management). If a concept is common, transform it into a more differentiated version.`;
 
+      console.error("[GENERATE] stage=gemini - calling model gemini-3.6-flash");
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -67,7 +90,7 @@ Avoid generic projects whenever possible (e.g., basic attendance systems, librar
                 pitch: { type: Type.STRING },
                 problemStatement: { type: Type.STRING },
                 proposedSolution: { type: Type.STRING },
-                targetUsers: { type: Type.STRING },
+                targetUsers: { type: Type.ARRAY, items: { type: Type.STRING } },
                 innovationExplanation: { type: Type.STRING },
                 originalityScore: { type: Type.INTEGER },
                 feasibilityScore: { type: Type.INTEGER },
@@ -80,7 +103,6 @@ Avoid generic projects whenever possible (e.g., basic attendance systems, librar
                 technologies: { type: Type.ARRAY, items: { type: Type.STRING } },
                 coreFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
                 advancedFeatures: { type: Type.ARRAY, items: { type: Type.STRING } },
-                aiMlComponents: { type: Type.STRING },
                 whySuitable: { type: Type.STRING }
               },
               required: [
@@ -94,24 +116,37 @@ Avoid generic projects whenever possible (e.g., basic attendance systems, librar
         }
       });
       
+      console.error("[GENERATE] stage=parsing - checking response");
       if (!response || !response.text) {
-        console.error("Gemini API returned an empty or invalid response:", response);
-        return res.status(502).json({ error: "Received empty response from Gemini API." });
+        return res.status(502).json({
+          error: true,
+          message: "Received empty response from Gemini API",
+          stage: "gemini",
+          details: "Response object or response.text was falsy"
+        });
       }
 
       let parsedData;
       try {
         parsedData = JSON.parse(response.text);
       } catch (parseError: any) {
-        console.error("Failed to parse Gemini response as JSON:", response.text);
-        return res.status(502).json({ error: "Failed to parse JSON response from Gemini API.", details: parseError.message });
+        console.error("[GENERATE] stage=parsing - JSON error:", parseError.message);
+        return res.status(502).json({
+          error: true,
+          message: "Failed to parse JSON response from Gemini API",
+          stage: "parsing",
+          details: parseError.message
+        });
       }
 
+      console.error("[GENERATE] stage=server - sending successful response");
       res.json(parsedData);
     } catch (error: any) {
-      console.error("Error in /api/generate:", error);
+      console.error("[GENERATE] stage=server - caught exception:", error.message || error);
       res.status(500).json({ 
-        error: "Internal Server Error in /api/generate", 
+        error: true,
+        message: "Internal Server Error in /api/generate",
+        stage: "server",
         details: error.message || "Unknown error occurred" 
       });
     }
@@ -129,7 +164,7 @@ Identify its weaknesses (e.g. too common, limited technical depth, low research 
 Then, evolve it into a significantly improved, highly differentiated project. Explain what changed (problem scope, technical approach, AI/ML component, architecture, research contribution, target users, evaluation methodology).`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -199,7 +234,7 @@ ${JSON.stringify(project, null, 2)}
 Provide sections for Project Overview, Features (core, advanced, future), Technology Stack, Database Design (entities/tables), Development Roadmap (break down into weeks/phases), Team Distribution (assuming team size constraints if any, or general), Risks & Mitigation, and Future Improvements.`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -294,7 +329,7 @@ ${JSON.stringify(project, null, 2)}
 Provide the Before and After for Features, Timeline, Technology, and Complexity, and explain what was removed, added, or changed. Then provide the adapted project object.`;
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -351,7 +386,7 @@ Provide the Before and After for Features, Timeline, Technology, and Complexity,
       const { project, messages } = req.body;
       
       const chat = ai.chats.create({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         config: {
           systemInstruction: `You are an AI technical mentor for a final-year student project.
 You must answer specifically for the current project instead of giving generic answers.
@@ -370,7 +405,7 @@ ${JSON.stringify(project, null, 2)}`,
       }
 
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: contents,
         config: {
             systemInstruction: `You are an AI technical mentor for a final-year student project.
@@ -402,7 +437,7 @@ History:
 ${JSON.stringify(history, null, 2)}
 `;
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt
       });
       res.json({ question: response.text });
@@ -434,7 +469,7 @@ Evaluate the answer and provide:
 
 Format as JSON.`;
       const response = await generateContentWithRetry(ai, {
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -463,11 +498,16 @@ Format as JSON.`;
     const PORT = process.env.PORT || 3000;
     // Vite middleware for development
     if (process.env.NODE_ENV !== "production") {
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: "spa",
-      });
-      app.use(vite.middlewares);
+      try {
+        const { createServer: createViteServer } = await import("vite");
+        const vite = await createViteServer({
+          server: { middlewareMode: true },
+          appType: "spa",
+        });
+        app.use(vite.middlewares);
+      } catch (err) {
+        console.error("Vite failed to load:", err);
+      }
     } else {
       const distPath = path.join(process.cwd(), "dist");
       app.use(express.static(distPath));
