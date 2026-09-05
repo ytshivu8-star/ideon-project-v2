@@ -48,7 +48,7 @@ export default function StudentDnaForm({
       navigate("discovery");
     } catch (error) {
       console.error(error);
-      alert("Failed to generate projects. Please try again.");
+      alert(error instanceof Error ? error.message : "Failed to generate projects. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -6,7 +6,19 @@ export async function generateProjects(dna: StudentDna): Promise<ProjectConcept[
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dna),
   });
-  if (!res.ok) throw new Error("Failed to generate projects");
+  if (!res.ok) {
+    let errorMessage = "Failed to generate projects";
+    try {
+      const errorData = await res.json();
+      if (errorData.message) {
+         errorMessage = `Generation failed: ${errorData.message}`;
+         if (errorData.stage) {
+            errorMessage = `Generation failed at ${errorData.stage} stage: ${errorData.message}`;
+         }
+      }
+    } catch(e) {}
+    throw new Error(errorMessage);
+  }
   return res.json();
 }
 
