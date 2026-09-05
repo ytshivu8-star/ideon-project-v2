@@ -31,8 +31,8 @@ export default function Landing({ navigate }: { navigate: (v: ViewState) => void
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 dark:bg-purple-500/20 rounded-full blur-[120px]" />
         </div>
         
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8 text-left z-10">
+        <div className="max-w-4xl mx-auto flex flex-col items-center text-center z-10 relative">
+          <div className="space-y-8 text-center z-10">
             <div className="inline-flex items-center rounded-full border border-indigo-200 dark:border-indigo-900 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 text-sm font-medium text-indigo-800 dark:text-indigo-300">
               <span className="flex h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-400 mr-2"></span>
               AI-Powered Project Innovation Platform
@@ -47,7 +47,7 @@ export default function Landing({ navigate }: { navigate: (v: ViewState) => void
               Ideon helps students discover, evaluate, evolve, and build final-year projects using AI-powered guidance tailored to their skills, interests, goals, time, budget, and team.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center">
               <button
                 onClick={() => navigate("dna")}
                 className="inline-flex items-center justify-center px-8 py-4 text-base font-medium text-white transition-all bg-indigo-600 rounded-full hover:bg-indigo-700 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 hover:-translate-y-0.5"
@@ -63,7 +63,7 @@ export default function Landing({ navigate }: { navigate: (v: ViewState) => void
               </a>
             </div>
 
-            <div className="pt-8 flex flex-wrap gap-4 text-sm font-medium text-neutral-500 dark:text-neutral-400">
+            <div className="pt-8 flex flex-wrap justify-center gap-4 text-sm font-medium text-neutral-500 dark:text-neutral-400">
               <span className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2 text-indigo-500" /> Personalized AI Recommendations</span>
               <span className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2 text-indigo-500" /> Project Evolution</span>
               <span className="flex items-center"><CheckCircle2 className="w-4 h-4 mr-2 text-indigo-500" /> Complete Development Blueprint</span>
@@ -72,48 +72,6 @@ export default function Landing({ navigate }: { navigate: (v: ViewState) => void
             </div>
           </div>
           
-          <div className="relative z-10 hidden lg:block">
-            <div className="relative rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-2xl overflow-hidden aspect-square flex flex-col">
-              <div className="h-12 border-b border-neutral-200 dark:border-neutral-800 flex items-center px-4 space-x-2 bg-neutral-50 dark:bg-neutral-950">
-                <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                <div className="w-3 h-3 rounded-full bg-green-400"></div>
-              </div>
-              <div className="p-6 flex-1 flex flex-col gap-4">
-                <div className="h-8 w-1/3 bg-neutral-100 dark:bg-neutral-800 rounded-md"></div>
-                <div className="flex-1 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-800 p-4 space-y-4">
-                  <div className="flex justify-between items-center pb-4 border-b border-neutral-200 dark:border-neutral-800">
-                     <div className="h-6 w-1/4 bg-neutral-200 dark:bg-neutral-700 rounded"></div>
-                     <div className="h-6 w-16 bg-indigo-100 dark:bg-indigo-900/50 rounded-full"></div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-4 w-full bg-neutral-200 dark:bg-neutral-800 rounded"></div>
-                    <div className="h-4 w-5/6 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
-                    <div className="h-4 w-4/6 bg-neutral-200 dark:bg-neutral-800 rounded"></div>
-                  </div>
-                  <div className="pt-4 grid grid-cols-2 gap-4">
-                    <div className="h-24 bg-neutral-200 dark:bg-neutral-800 rounded-lg"></div>
-                    <div className="h-24 bg-neutral-200 dark:bg-neutral-800 rounded-lg"></div>
-                  </div>
-                </div>
-              </div>
-              {/* Overlay floating elements */}
-              <div className="absolute -right-6 top-32 p-4 bg-white dark:bg-neutral-800 rounded-xl shadow-xl border border-neutral-100 dark:border-neutral-700 flex items-center gap-4">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg"><Trophy className="w-6 h-6" /></div>
-                <div>
-                  <div className="text-sm font-bold">Feasibility Score</div>
-                  <div className="text-xs text-neutral-500">9.5/10 - Excellent</div>
-                </div>
-              </div>
-              <div className="absolute -left-6 bottom-32 p-4 bg-white dark:bg-neutral-800 rounded-xl shadow-xl border border-neutral-100 dark:border-neutral-700 flex items-center gap-4">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg"><BrainCircuit className="w-6 h-6" /></div>
-                <div>
-                  <div className="text-sm font-bold">AI Mentor Active</div>
-                  <div className="text-xs text-neutral-500">Ready to assist...</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
